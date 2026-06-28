@@ -573,7 +573,19 @@ QStringList MinecraftInstance::javaArguments()
 
     args << "-Duser.language=en";
 
-    // custom args go first. we want to override them if we have our own here.
+#ifdef Q_OS_WIN
+    // Force UTF-8 encoding for System.out/err only (not file.encoding).
+    // On Windows, Java's System.out defaults to the ANSI code page (e.g. GBK),
+    // while log4j's ConsoleAppender outputs UTF-8.  This mismatch produces
+    // mixed-encoding pipe data that no single decoder can handle.
+    // sun.stdout.encoding is a HotSpot internal property that only affects
+    // stdout/stderr encoding, NOT file I/O.  It is silently ignored on JDKs
+    // that do not support it (no regression in that case).
+    // Users can override these via custom JVM arguments.
+    args << "-Dsun.stdout.encoding=UTF-8" << "-Dsun.stderr.encoding=UTF-8";
+#endif
+
+    // custom args go after, so they can override the defaults above.
     args.append(extraArguments());
 
     // OSX dock icon and name

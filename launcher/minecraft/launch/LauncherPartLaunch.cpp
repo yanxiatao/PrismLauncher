@@ -48,9 +48,21 @@
 #include "gamemode_client.h"
 #endif
 
+static QStringConverter::Encoding resolveOutputEncoding(const JavaVersion& javaVersion)
+{
+#ifdef Q_OS_WIN
+    // Windows: javaArguments() injects -Dsun.stdout.encoding=UTF-8, so all
+    // Java output (log4j + System.out) is consistently UTF-8.
+    Q_UNUSED(javaVersion);
+    return QStringConverter::Utf8;
+#else
+    // Unix: Java >= 18 defaults to UTF-8, older Java uses system locale encoding.
+    return javaVersion.defaultsToUtf8() ? QStringConverter::Utf8 : QStringConverter::System;
+#endif
+}
+
 LauncherPartLaunch::LauncherPartLaunch(LaunchTask* parent)
-    : LaunchStep(parent)
-    , m_process(parent->instance()->getJavaVersion().defaultsToUtf8() ? QStringConverter::Utf8 : QStringConverter::System)
+    : LaunchStep(parent), m_process(resolveOutputEncoding(parent->instance()->getJavaVersion()))
 {
     if (parent->instance()->settings()->get("CloseAfterLaunch").toBool()) {
         static const QRegularExpression s_settingUser(".*Setting user.+", QRegularExpression::CaseInsensitiveOption);
